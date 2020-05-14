@@ -1,0 +1,21 @@
+# build stage
+# apline:3.11 cannot find libz.a in zlib-dev
+FROM alpine:3.10 as builder
+
+ENV LDFLAGS=-static
+RUN apk add --no-cache \
+        build-base \
+        git \
+        ucl-dev \
+        zlib-dev
+RUN git clone --recursive https://github.com/upx/upx.git /upx \
+    && make -j10 -C /upx/src upx.out CHECK_WHITESPACE=
+RUN /upx/src/upx.out \
+        --lzma \
+        -o /usr/bin/upx \
+        /upx/src/upx.out
+
+# final stage
+FROM busybox:1.31.1
+COPY --from=builder /usr/bin/upx /usr/bin/upx
+ENTRYPOINT ["/usr/bin/upx"]
